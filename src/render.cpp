@@ -57,6 +57,15 @@ Vec3f CastRay(const Vec3f &origin, const Vec3f &direction, const std::vector<Sph
     for (auto light : lights)
     {
         Vec3f lightDirection = (light.Position - point).normalize();
+        float lightDistance = (light.Position - point).norm();
+
+        Vec3f shadowOrigin = lightDirection * N < 0 ? point - N * 1e-3 : point + N * 1e-3;
+        Vec3f shadowPoint, shadowN;
+        Material tmpmaterial;
+
+        if (SceneIntersect(shadowOrigin, lightDirection, spheres, shadowPoint, shadowN, tmpmaterial) && (shadowPoint - shadowOrigin).norm() < lightDistance)
+            continue;
+
         diffuseLightIntensity += light.Intensity * std::max(0.0f, lightDirection * N);
         specularLightIntensity += powf(std::max(0.f, -Reflect(-lightDirection, N) * direction), material.Specular) * light.Intensity;
     }
