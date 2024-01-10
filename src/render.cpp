@@ -31,6 +31,11 @@ void Render(std::vector<Sphere> &spheres, const std::vector<Light> &lights)
         << width << " " << height << "\n255\n";
     for (size_t i = 0; i < height * width; ++i)
     {
+        Vec3f &c = frameBuffer[i];
+        float max = std::max(c[0], std::max(c[1], c[2]));
+        if (max > 1)
+            c = c * (1. / max);
+
         for (size_t j = 0; j < 3; j++)
         {
             ofs << (char)(255 * std::max(0.f, std::min(1.f, frameBuffer[i][j])));
@@ -48,13 +53,15 @@ Vec3f CastRay(const Vec3f &origin, const Vec3f &direction, const std::vector<Sph
         return Vec3f(0.2, 0.7, 0.8);
 
     float diffuseLightIntensity = 0;
+    float specularLightIntensity = 0;
     for (auto light : lights)
     {
         Vec3f lightDirection = (light.Position - point).normalize();
         diffuseLightIntensity += light.Intensity * std::max(0.0f, lightDirection * N);
+        specularLightIntensity += powf(std::max(0.f, -Reflect(-lightDirection, N) * direction), material.Specular) * light.Intensity;
     }
 
-    return material.Color * diffuseLightIntensity;
+    return material.DiffuseColor * diffuseLightIntensity * material.Albedo[0] + Vec3f(1., 1., 1.) * specularLightIntensity * material.Albedo[1];
 }
 
 bool SceneIntersect(const Vec3f &origin, const Vec3f &direction, const std::vector<Sphere> &spheres, Vec3f &hit, Vec3f &N, Material &material)
@@ -72,4 +79,9 @@ bool SceneIntersect(const Vec3f &origin, const Vec3f &direction, const std::vect
         }
     }
     return sphereDistance < 1000;
+}
+
+Vec3f Reflect(const Vec3f &I, const Vec3f &N)
+{
+    return I - N * 2.f * (I * N);
 }

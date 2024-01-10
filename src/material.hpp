@@ -4,7 +4,9 @@
 
 struct Material
 {
-    Material(const Vec3f &color) : Color(color) {}
-    Material() : Color() {}
-    Vec3f Color;
+    Material(const Vec2f &albedo, const Vec3f &color, const float &specular) : Albedo(albedo), DiffuseColor(color), Specular(specular) {}
+    Material() : DiffuseColor() {}
+    Vec2f Albedo;
+    Vec3f DiffuseColor;
+    float Specular;
 };
