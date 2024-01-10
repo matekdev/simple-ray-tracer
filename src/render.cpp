@@ -44,13 +44,17 @@ void Render(std::vector<Sphere> &spheres, const std::vector<Light> &lights)
     ofs.close();
 }
 
-Vec3f CastRay(const Vec3f &origin, const Vec3f &direction, const std::vector<Sphere> &spheres, const std::vector<Light> &lights)
+Vec3f CastRay(const Vec3f &origin, const Vec3f &direction, const std::vector<Sphere> &spheres, const std::vector<Light> &lights, size_t depth)
 {
     Vec3f point, N;
     Material material;
 
-    if (!SceneIntersect(origin, direction, spheres, point, N, material))
-        return Vec3f(0.2, 0.7, 0.8);
+    if (depth > 4 || !SceneIntersect(origin, direction, spheres, point, N, material))
+        return Vec3f(0.27, 0.63, 0.94);
+
+    Vec3f reflectDirection = Reflect(direction, N).normalize();
+    Vec3f reflectOrigin = reflectDirection * N < 0 ? point - N * 1e-3 : point + N * 1e-3;
+    Vec3f reflectColor = CastRay(reflectOrigin, reflectDirection, spheres, lights, depth + 1);
 
     float diffuseLightIntensity = 0;
     float specularLightIntensity = 0;
@@ -70,7 +74,7 @@ Vec3f CastRay(const Vec3f &origin, const Vec3f &direction, const std::vector<Sph
         specularLightIntensity += powf(std::max(0.f, -Reflect(-lightDirection, N) * direction), material.Specular) * light.Intensity;
     }
 
-    return material.DiffuseColor * diffuseLightIntensity * material.Albedo[0] + Vec3f(1., 1., 1.) * specularLightIntensity * material.Albedo[1];
+    return material.DiffuseColor * diffuseLightIntensity * material.Albedo[0] + Vec3f(1., 1., 1.) * specularLightIntensity * material.Albedo[1] + reflectColor * material.Albedo[2];
 }
 
 bool SceneIntersect(const Vec3f &origin, const Vec3f &direction, const std::vector<Sphere> &spheres, Vec3f &hit, Vec3f &N, Material &material)
@@ -87,7 +91,23 @@ bool SceneIntersect(const Vec3f &origin, const Vec3f &direction, const std::vect
             material = sphere.GetMaterial();
         }
     }
-    return sphereDistance < 1000;
+
+    float checkerboardDistance = std::numeric_limits<float>::max();
+    if (fabs(direction.y) > 1e-3)
+    {
+        float d = -(origin.y + 4) / direction.y;
+        Vec3f pt = origin + direction * d;
+        if (d > 0 && fabs(pt.x) < 10 && pt.z < -10 && pt.z > -30 && d < sphereDistance)
+        {
+            checkerboardDistance = d;
+            hit = pt;
+            N = Vec3f(0, 1, 0);
+            material.DiffuseColor = (int(.5 * hit.x + 1000) + int(.5 * hit.z)) & 1 ? Vec3f(1, 1, 1) : Vec3f(1, .7, .3);
+            material.DiffuseColor = material.DiffuseColor * .3;
+        }
+    }
+
+    return std::min(sphereDistance, checkerboardDistance) < 1000;
 }
 
 Vec3f Reflect(const Vec3f &I, const Vec3f &N)
