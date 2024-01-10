@@ -6,7 +6,7 @@
 #include <iostream>
 #include <fstream>
 
-void Render(std::vector<Sphere> &spheres)
+void Render(std::vector<Sphere> &spheres, const std::vector<Light> &lights)
 {
     const int width = 1024;
     const int height = 768;
@@ -21,7 +21,7 @@ void Render(std::vector<Sphere> &spheres)
             float x = (2 * (i + 0.5) / (float)width - 1) * tan(fov / 2.) * width / (float)height;
             float y = -(2 * (j + 0.5) / (float)height - 1) * tan(fov / 2.);
             Vec3f dir = Vec3f(x, y, -1).normalize();
-            frameBuffer[i + j * width] = CastRay(Vec3f(0, 0, 0), dir, spheres);
+            frameBuffer[i + j * width] = CastRay(Vec3f(0, 0, 0), dir, spheres, lights);
         }
     }
 
@@ -39,7 +39,7 @@ void Render(std::vector<Sphere> &spheres)
     ofs.close();
 }
 
-Vec3f CastRay(const Vec3f &origin, const Vec3f &direction, const std::vector<Sphere> &spheres)
+Vec3f CastRay(const Vec3f &origin, const Vec3f &direction, const std::vector<Sphere> &spheres, const std::vector<Light> &lights)
 {
     Vec3f point, N;
     Material material;
@@ -47,7 +47,14 @@ Vec3f CastRay(const Vec3f &origin, const Vec3f &direction, const std::vector<Sph
     if (!SceneIntersect(origin, direction, spheres, point, N, material))
         return Vec3f(0.2, 0.7, 0.8);
 
-    return material.Color;
+    float diffuseLightIntensity = 0;
+    for (auto light : lights)
+    {
+        Vec3f lightDirection = (light.Position - point).normalize();
+        diffuseLightIntensity += light.Intensity * std::max(0.0f, lightDirection * N);
+    }
+
+    return material.Color * diffuseLightIntensity;
 }
 
 bool SceneIntersect(const Vec3f &origin, const Vec3f &direction, const std::vector<Sphere> &spheres, Vec3f &hit, Vec3f &N, Material &material)

@@ -11,5 +11,8 @@ int main()
     spheres.push_back(Sphere(Vec3f(1.5, -0.5, -18), 3, red));
     spheres.push_back(Sphere(Vec3f(7, 5, -18), 4, ivory));
 
-    Render(spheres);
+    std::vector<Light> lights;
+    lights.push_back(Light(Vec3f(-20, 20, 20), 1.5));
+
+    Render(spheres, lights);
 }
